@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-11-18
 **Repository:** LoadGalax/BDO-T5
-**Current State:** Initial setup phase
+**Current State:** Active development - Core functionality complete
 
 ---
 
@@ -24,18 +24,26 @@
 
 ### What is BDO-T5?
 
-BDO-T5 appears to be a project related to Black Desert Online (BDO), potentially involving T5 model architecture for image processing, text generation, or game-related assistance.
+BDO-T5 is a Black Desert Online helper application that uses computer vision and OCR (Optical Character Recognition) to automatically identify game icons and extract associated numbers from screenshots. The system stores detected data in a SQLite database for tracking and analysis.
 
 ### Current Project State
 
-- **Status:** Initial setup/scaffolding phase
-- **Primary Language:** To be determined
-- **Framework/Stack:** To be determined
-- **Dependencies:** None yet configured
+- **Status:** Core functionality complete and ready for use
+- **Primary Language:** Python 3.8+
+- **Framework/Stack:**
+  - Computer Vision: OpenCV
+  - OCR: Pytesseract / EasyOCR
+  - Database: SQLite3
+  - Configuration: YAML
+- **Dependencies:** Fully configured (see requirements.txt)
 
 ### Project Goals
 
-*To be documented as the project develops*
+1. **Icon Recognition**: Automatically detect and identify BDO icons in screenshots using template matching
+2. **Number Extraction**: Use OCR to extract quantities, levels, or other numeric data associated with icons
+3. **Data Storage**: Maintain a historical database of detected icons and their values
+4. **Extensibility**: Allow easy addition of new icon templates and categories
+5. **Automation**: Enable tracking of in-game resources, inventory, and progression over time
 
 ---
 
@@ -43,32 +51,35 @@ BDO-T5 appears to be a project related to Black Desert Online (BDO), potentially
 
 ```
 BDO-T5/
-├── .git/                  # Git version control
-├── init.txt              # Initial repository marker
-└── CLAUDE.md            # This file - AI assistant guide
-```
-
-### Expected Future Structure
-
-As the project develops, the following structure is recommended:
-
-```
-BDO-T5/
-├── src/                  # Source code
-│   ├── models/          # Model definitions (T5, etc.)
-│   ├── data/            # Data processing utilities
-│   ├── utils/           # Helper functions
-│   └── main.py/js/ts    # Entry point
-├── tests/               # Test files
-├── docs/                # Additional documentation
-├── data/                # Data files (gitignored)
-├── config/              # Configuration files
-├── scripts/             # Utility scripts
-├── requirements.txt     # Python dependencies (if Python)
-├── package.json         # Node dependencies (if Node.js)
-├── README.md           # Project overview and setup
-├── CLAUDE.md           # This file
-└── .gitignore          # Git ignore rules
+├── src/                           # Source code
+│   ├── database/                  # Database layer
+│   │   ├── __init__.py           # Database module exports
+│   │   ├── models.py             # Icon and IconData models
+│   │   └── db_manager.py         # DatabaseManager with CRUD operations
+│   ├── image_processing/          # Computer vision
+│   │   ├── __init__.py           # Image processing exports
+│   │   ├── icon_detector.py      # IconDetector class for template matching
+│   │   └── image_utils.py        # ImageUtils for preprocessing
+│   ├── ocr/                       # OCR and text recognition
+│   │   ├── __init__.py           # OCR module exports
+│   │   └── ocr_reader.py         # OCRReader with multiple engine support
+│   ├── utils/                     # Utilities
+│   │   ├── __init__.py           # Utils exports
+│   │   └── config_loader.py      # ConfigLoader for YAML config
+│   ├── __init__.py               # Package metadata
+│   └── main.py                   # Main application entry point
+├── data/                          # Data directory (gitignored)
+│   ├── images/                   # Source screenshots
+│   ├── templates/                # Icon template images (by category)
+│   └── processed/                # Visualization outputs
+├── config/                        # Configuration
+│   └── config.yaml               # Main configuration file
+├── tests/                         # Test files (to be added)
+├── requirements.txt               # Python dependencies
+├── example_usage.py               # Usage examples and demonstrations
+├── README.md                      # Project documentation
+├── CLAUDE.md                      # This file - AI assistant guide
+└── .gitignore                    # Git ignore rules
 ```
 
 ---
@@ -261,11 +272,120 @@ git diff --staged
 
 ---
 
+## Key Modules and Components
+
+### Database Module (`src/database/`)
+
+**Purpose:** Manages all SQLite database operations for storing icons and detection data.
+
+**Key Classes:**
+- `Icon`: Data model representing an icon template with metadata
+- `IconData`: Data model representing a detection instance with position, confidence, and extracted data
+- `DatabaseManager`: Handles all CRUD operations and database initialization
+
+**Key Features:**
+- Automatic schema creation with indexes
+- Upsert operations (insert or update based on icon hash)
+- Foreign key relationships between icons and detection data
+- Query methods for retrieving by category, hash, or recent detections
+- Statistics generation
+
+**Usage Notes:**
+- Always use context manager (`with DatabaseManager() as db:`) or manually call `close()`
+- Icon hashes are unique identifiers computed from image content
+- Database path is configurable via `config.yaml`
+
+### Image Processing Module (`src/image_processing/`)
+
+**Purpose:** Handles icon detection using template matching and image preprocessing.
+
+**Key Classes:**
+- `IconDetector`: Performs template matching to find icons in images
+- `ImageUtils`: Utility functions for image loading, preprocessing, and manipulation
+- `Detection`: Data class representing a single icon detection result
+
+**Key Features:**
+- Multi-scale template matching (searches at different sizes)
+- Non-maximum suppression to remove duplicate detections
+- Configurable confidence thresholds
+- Support for template categories and organization
+- Visualization capabilities
+
+**Usage Notes:**
+- Templates should be placed in `data/templates/` organized by category
+- Supported image formats: PNG, JPG, JPEG, BMP
+- Multi-scale detection improves accuracy but increases processing time
+- Template images should closely match in-game icon appearance
+
+### OCR Module (`src/ocr/`)
+
+**Purpose:** Extracts text and numbers from images using OCR engines.
+
+**Key Classes:**
+- `OCRReader`: Main OCR interface supporting multiple engines
+- `OCRResult`: Data class representing OCR detection with text, numbers, and confidence
+
+**Key Features:**
+- Support for Pytesseract and EasyOCR engines
+- Automatic engine selection ("auto" mode)
+- Image preprocessing for better OCR accuracy
+- Region-based OCR for targeted extraction
+- Number extraction from mixed text
+- Position-relative number detection (e.g., number to the right of an icon)
+
+**Usage Notes:**
+- Pytesseract requires Tesseract OCR to be installed on the system
+- EasyOCR downloads models automatically on first run (~100MB)
+- Preprocessing significantly improves number recognition accuracy
+- Configure search regions in `config.yaml` for optimal results
+
+### Main Application (`src/main.py`)
+
+**Purpose:** Command-line interface and workflow orchestration.
+
+**Key Class:**
+- `BDOIconRecognizer`: Main application class that coordinates all modules
+
+**Commands:**
+- `process`: Process an image to detect icons and numbers
+- `add-template`: Add a new icon template to the system
+- `list`: List all loaded templates
+- `stats`: Display database statistics
+
+**Workflow:**
+1. Load configuration
+2. Initialize database, detector, and OCR
+3. Process image: detect icons → extract numbers → store in database
+4. Optionally save visualization
+
+### Configuration (`config/config.yaml`)
+
+**Purpose:** Centralized configuration for all system parameters.
+
+**Key Sections:**
+- `database`: Database file path
+- `image_processing`: Template directory, confidence thresholds, scale settings
+- `ocr`: Engine selection, language, search regions
+- `processing`: Image size limits, visualization settings
+
+**Configuration Loading:**
+- Uses `ConfigLoader` class with dot-notation access (`config.get('database.path')`)
+- Falls back to defaults if config file missing
+- Supports YAML format for readability
+
+---
+
 ## Testing Strategy
 
 ### Test Framework
 
-*To be determined based on project language and requirements*
+**Framework:** pytest with pytest-cov for coverage
+
+**Setup:**
+```bash
+pip install pytest pytest-cov
+pytest tests/
+```
 
 ### Test Coverage
 
@@ -276,16 +396,31 @@ git diff --staged
 ### Running Tests
 
 ```bash
-# To be documented when test framework is set up
-# Example: pytest tests/
-# Example: npm test
+# Run all tests
+pytest tests/
+
+# Run with coverage report
+pytest --cov=src tests/
+
+# Run specific test file
+pytest tests/test_database.py
+
+# Run with verbose output
+pytest -v tests/
 ```
 
 ### Test Organization
 
-- Unit tests: Test individual functions/methods
-- Integration tests: Test component interactions
-- E2E tests: Test complete workflows (if applicable)
+- `tests/test_database.py`: Database CRUD operations and queries
+- `tests/test_image_processing.py`: Icon detection and image utilities
+- `tests/test_ocr.py`: OCR functionality and number extraction
+- `tests/test_integration.py`: End-to-end workflow tests
+
+**Note:** Tests are not yet implemented. When adding tests:
+- Use pytest fixtures for database and detector setup
+- Mock external dependencies (file I/O, OCR engines)
+- Test both success and failure scenarios
+- Aim for >80% code coverage
 
 ---
 
@@ -293,15 +428,48 @@ git diff --staged
 
 ### Environment Setup
 
-*To be documented as deployment strategy is established*
+This is a local Python application with no deployment pipeline. Users run it directly on their machines.
 
-### Build Process
+**Installation:**
+```bash
+git clone https://github.com/LoadGalax/BDO-T5.git
+cd BDO-T5
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-*To be documented when build process is configured*
+**System Requirements:**
+- Python 3.8 or higher
+- Tesseract OCR (optional, for Pytesseract engine)
+- 2GB RAM minimum (4GB recommended for EasyOCR)
+- Storage: ~500MB for dependencies and models
 
-### Deployment Steps
+### Usage
 
-*To be documented when deployment pipeline is set up*
+The application is run via command line:
+
+```bash
+# Process a screenshot
+python src/main.py process --image screenshot.png
+
+# Add a template
+python src/main.py add-template --image icon.png --name "health_potion" --category "items"
+
+# View statistics
+python src/main.py stats
+
+# List templates
+python src/main.py list
+```
+
+### Distribution
+
+For sharing with other users:
+1. Package with templates: Include common icon templates in `data/templates/`
+2. Document template creation process
+3. Provide example screenshots for testing
+4. Consider creating a setup script for one-command installation
 
 ---
 
@@ -348,29 +516,64 @@ git diff --staged
 
 ### BDO (Black Desert Online) Context
 
-This project appears to be related to Black Desert Online. When working with BDO-related features:
+This project is a helper tool for Black Desert Online players. When working on BDO-related features:
 
-- Understand the game context if implementing game-specific features
-- Be aware of game terminology and mechanics
-- Consider user experience for BDO players
+**Game Understanding:**
+- BDO is an MMORPG with complex inventory, crafting, and enhancement systems
+- Players often need to track resources, items, and progression
+- Screenshots contain UI elements with icons and numbers
 
-### T5 Model Architecture
+**Common Use Cases:**
+- **Inventory Tracking**: Detect item icons and quantities
+- **Enhancement Tracking**: Monitor enhancement levels and materials
+- **Market Analysis**: Track prices and availability
+- **Crafting Management**: Monitor crafting materials and recipes
 
-If using T5 (Text-to-Text Transfer Transformer):
+**Icon Categories:**
+- `items`: General game items (potions, materials, etc.)
+- `enhancement`: Enhancement stones, cron stones, etc.
+- `currency`: Silver, pearls, special currencies
+- `buffs`: Active buffs and effects
+- `skills`: Skill icons
 
-- Document model versions used
-- Track training data and parameters
-- Consider model size and performance trade-offs
-- Document inference requirements
+### Template Matching Approach
 
-### Image Processing
+This project uses template matching (not T5 transformers) for icon recognition:
 
-Based on branch history mentioning "image-assistant":
+**Why Template Matching:**
+- Game icons are consistent and don't change
+- Fast and accurate for static icon detection
+- No training data or ML models required
+- Works well with multi-scale detection
 
-- Follow best practices for image handling
-- Consider memory usage for large images
-- Document supported image formats
-- Implement proper error handling for corrupted images
+**Best Practices:**
+- Crop icon templates precisely (no extra background)
+- Use PNG format with transparency when possible
+- Organize templates by category
+- Test with different game resolutions
+- Adjust confidence threshold per icon if needed
+
+### OCR for Numbers
+
+Number extraction is critical for tracking quantities:
+
+**Common Scenarios:**
+- Item quantities in inventory (e.g., "x573")
+- Enhancement levels (e.g., "+15", "PRI", "DUO")
+- Currency amounts (e.g., "1,234,567")
+- Buff durations (e.g., "30:00")
+
+**OCR Challenges:**
+- Game fonts may be stylized
+- Numbers may have decorative backgrounds
+- Multiple numbers near same icon
+- Different number formats (with/without commas)
+
+**Solutions:**
+- Preprocessing with adaptive thresholding
+- Configurable search regions per icon
+- Primary number selection (largest value)
+- Custom number extraction regex patterns
 
 ---
 
@@ -406,6 +609,7 @@ This CLAUDE.md file should be updated when:
 | Date | Version | Changes |
 |------|---------|---------|
 | 2025-11-18 | 1.0.0 | Initial CLAUDE.md creation |
+| 2025-11-18 | 1.1.0 | Updated with complete project details, module documentation, and BDO-specific guidance |
 
 ---
 

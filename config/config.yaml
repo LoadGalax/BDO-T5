@@ -1,0 +1,40 @@
+# BDO-T5 Icon Recognition System Configuration
+
+# Database settings
+database:
+  path: "data/bdo_icons.db"
+
+# Image processing settings
+image_processing:
+  template_dir: "data/templates"
+  confidence_threshold: 0.8
+  multi_scale_detection: true
+  scales:
+    - 0.8
+    - 0.9
+    - 1.0
+    - 1.1
+    - 1.2
+
+# OCR settings
+ocr:
+  engine: "auto"  # Options: "auto", "pytesseract", "easyocr"
+  language: "en"
+  preprocess: true
+  number_search_region:
+    width: 100
+    height: 50
+  default_direction: "right"  # Where to look for numbers relative to icon
+
+# Processing settings
+processing:
+  max_image_width: 1920
+  max_image_height: 1080
+  save_visualizations: true
+  visualization_dir: "data/processed"
+
+# Logging settings
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  file: "logs/bdo_t5.log"
+  console_output: true

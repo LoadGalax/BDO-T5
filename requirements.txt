@@ -1,0 +1,28 @@
+# Image Processing
+opencv-python==4.8.1.78
+Pillow==10.1.0
+numpy==1.26.2
+
+# OCR (Optical Character Recognition)
+pytesseract==0.3.10
+easyocr==1.7.1
+
+# Computer Vision / ML
+scikit-image==0.22.0
+scipy==1.11.4
+
+# Database
+sqlite3  # Built-in with Python, no installation needed
+
+# Configuration
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# Utilities
+tqdm==4.66.1
+
+# Development/Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.12.0
+flake8==6.1.0
